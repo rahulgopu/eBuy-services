@@ -2,6 +2,8 @@ package com.ebuy.customer;
 
 import com.ebuy.clients.fraud.FraudCheckResponse;
 import com.ebuy.clients.fraud.FraudClient;
+import com.ebuy.clients.notification.NotificationClient;
+import com.ebuy.clients.notification.NotificationRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -9,7 +11,7 @@ import java.util.Objects;
 
 @Service
 public record CustomerService(CustomerRepository customerRepository, RestTemplate restTemplate,
-                              FraudClient fraudClient) {
+                              FraudClient fraudClient, NotificationClient notificationClient) {
     public void registerCustomer(CustomerRegistrationRequest request) {
         Customer customer = Customer.builder()
                 .firstname(request.firstname())
@@ -26,6 +28,14 @@ public record CustomerService(CustomerRepository customerRepository, RestTemplat
         if(Objects.nonNull(fraudCheckResponse) && fraudCheckResponse.isFraudster()) {
             throw new IllegalStateException("fraudster");
         }
-        //todo: send notification
+
+        //todo: make it async. i.e add to queue
+        notificationClient.sendNotification(
+                new NotificationRequest(
+                        customer.getId(),
+                        customer.getEmail(),
+                        String.format("Hi %s, Welcome to eBuy...", customer.getFirstname())
+                )
+        );
     }
 }
