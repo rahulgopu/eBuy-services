@@ -16,6 +16,8 @@
     <module>clients</module>
     <module>notification</module>
     <module>product</module>
+    <module>cart</module>
+    <module>message-broker</module>
   </modules>
 
   <name>ebuy-services</name>

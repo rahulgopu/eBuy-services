@@ -1,17 +1,17 @@
 package com.ebuy.customer;
 
+import com.ebuy.amqp.RabbitMQMessageProducer;
 import com.ebuy.clients.fraud.FraudCheckResponse;
 import com.ebuy.clients.fraud.FraudClient;
-import com.ebuy.clients.notification.NotificationClient;
 import com.ebuy.clients.notification.NotificationRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.Objects;
 
 @Service
-public record CustomerService(CustomerRepository customerRepository, RestTemplate restTemplate,
-                              FraudClient fraudClient, NotificationClient notificationClient) {
+public record CustomerService(CustomerRepository customerRepository,
+                              FraudClient fraudClient,
+                              RabbitMQMessageProducer rabbitMQMessageProducer) {
     public void registerCustomer(CustomerRegistrationRequest request) {
         Customer customer = Customer.builder()
                 .firstname(request.firstname())
@@ -29,13 +29,15 @@ public record CustomerService(CustomerRepository customerRepository, RestTemplat
             throw new IllegalStateException("fraudster");
         }
 
-        //todo: make it async. i.e add to queue
-        notificationClient.sendNotification(
-                new NotificationRequest(
-                        customer.getId(),
-                        customer.getEmail(),
-                        String.format("Hi %s, Welcome to eBuy...", customer.getFirstname())
-                )
+        NotificationRequest notificationRequest = new NotificationRequest(
+                customer.getId(),
+                customer.getEmail(),
+                String.format("Hi %s, Welcome to eBuy...", customer.getFirstname())
         );
+
+        rabbitMQMessageProducer.publish(notificationRequest,
+                "internal.exchange",
+                "internal.notification.routing-key");
+
     }
 }
